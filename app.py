@@ -6,7 +6,7 @@ import tableauserverclient as TSC
 
 # Set up connection.
 
-st.markdown("### Dashboard ###")
+st.markdown("### Earthquake Dashboard ###")
 
 tableau_auth = TSC.PersonalAccessTokenAuth(
     st.secrets["tableau"]["token_name"],
@@ -18,46 +18,29 @@ server = TSC.Server(st.secrets["tableau"]["server_url"], use_server_version=True
 
 # Get various data.
 
-@st.cache_data(ttl=1200)
-def run_query():
+@st.experimental_memo(ttl=1200)
+def run_query(view_name):
     with server.auth.sign_in(tableau_auth):
 
         # Get all workbooks.
         workbooks, pagination_item = server.workbooks.get()
-        workbooks_names = [w.name for w in workbooks]
+        for w in workbooks:
+            if w.name == 'Account Engagement':
+                our_workbook = w
+                break
 
-        # Get views for first workbook.
-        server.workbooks.populate_views(workbooks[0])
-        views_names = [v.name for v in workbooks[0].views]
+        # Get views for ABC workbook.
+        server.workbooks.populate_views(our_workbook)
+        for v in our_workbook.views:
+            if view_name == v.name:
+                our_view = v
+                break
 
-        # Get image & CSV for first view of first workbook.
-        view_item = workbooks[0].views[0]
-        server.views.populate_image(view_item)
-        server.views.populate_csv(view_item)
-        view_name = view_item.name
-        view_image = view_item.image
-        # `view_item.csv` is a list of binary objects, convert to str.
-        view_csv = b"".join(view_item.csv).decode("utf-8")
-
-        return workbooks_names, views_names, view_name, view_image, view_csv
-
-workbooks_names, views_names, view_name, view_image, view_csv = run_query()
-
-
-# Print results.
-st.subheader("📓 Workbooks")
-st.write("Found the following workbooks:", ", ".join(workbooks_names))
-
-st.subheader("👁️ Views")
-st.write(
-    f"Workbook *{workbooks_names[0]}* has the following views:",
-    ", ".join(views_names),
-)
-
-st.subheader("🖼️ Image")
-st.write(f"Here's what view *{view_name}* looks like:")
-st.image(view_image, width=300)
-
-st.subheader("📊 Data")
-st.write(f"And here's the data for view *{view_name}*:")
-st.write(pd.read_csv(StringIO(view_csv)))
+        # Get image of the view
+        server.views.populate_image(our_view)
+        view_image = our_view.image
+        
+        return view_image
+    
+view_image = run_query("Account Engagement")
+st.image(view_image, width=800)
