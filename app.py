@@ -18,7 +18,7 @@ server = TSC.Server(st.secrets["tableau"]["server_url"], use_server_version=True
 
 # Get various data.
 
-@st.experimental_memo(ttl=1200)
+@st.cache_data(ttl=1200)
 def run_query(view_name):
     with server.auth.sign_in(tableau_auth):
 
